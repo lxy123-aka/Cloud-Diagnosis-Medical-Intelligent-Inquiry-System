@@ -1,0 +1,45 @@
+# ============================================================
+# CDMIIS .gitignore
+# ============================================================
+
+# ---------- 环境与密钥（绝不提交） ----------
+.env
+.env.enc
+*.env
+!.env.example
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# ---------- IDE ----------
+.idea/
+.vscode/
+
+# ---------- 日志与运行时 ----------
+logs/
+*.log
+
+# ---------- 模型权重与训练输出（大文件不入库） ----------
+models/
+train/output/
+checkpoints/
+*.ckpt
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+
+# ---------- 数据库本地文件 ----------
+*.db
+*.sqlite3
+
+# ---------- 系统文件 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
