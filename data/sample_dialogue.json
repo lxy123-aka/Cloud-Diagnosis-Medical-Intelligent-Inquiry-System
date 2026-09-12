@@ -1,0 +1,335 @@
+[
+  {
+    "session_id": "sim_001",
+    "chief_complaint": "头痛发热三天",
+    "dialogue": [
+      {
+        "role": "patient",
+        "content": "医生，我头痛发热三天了"
+      },
+      {
+        "role": "doctor",
+        "content": "请问最高体温多少？"
+      },
+      {
+        "role": "patient",
+        "content": "大概38度左右"
+      },
+      {
+        "role": "doctor",
+        "content": "有没有咳嗽、嗓子疼？"
+      },
+      {
+        "role": "patient",
+        "content": "有点咳嗽，嗓子也疼"
+      },
+      {
+        "role": "doctor",
+        "content": "有没有流鼻涕？"
+      },
+      {
+        "role": "patient",
+        "content": "有的，鼻子不通气"
+      },
+      {
+        "role": "doctor",
+        "content": "有没有做过血常规检查？"
+      },
+      {
+        "role": "patient",
+        "content": "还没有"
+      },
+      {
+        "role": "doctor",
+        "content": "建议查个血常规，目前看考虑上呼吸道感染，先吃点退烧药和多喝水"
+      }
+    ],
+    "symptoms": [
+      "头痛",
+      "发热",
+      "咳嗽",
+      "咽痛",
+      "鼻塞"
+    ],
+    "final_diagnosis": "上呼吸道感染",
+    "source": "模拟数据",
+    "note": "此数据为人工设计的模拟问诊对话，不对应任何真实患者"
+  },
+  {
+    "session_id": "sim_002",
+    "chief_complaint": "腹痛腹泻两天",
+    "dialogue": [
+      {
+        "role": "patient",
+        "content": "医生，我肚子疼，拉了两天了"
+      },
+      {
+        "role": "doctor",
+        "content": "大便是什么性状的？水样还是糊状？"
+      },
+      {
+        "role": "patient",
+        "content": "水样的，一天拉了五六次"
+      },
+      {
+        "role": "doctor",
+        "content": "有没有恶心呕吐？"
+      },
+      {
+        "role": "patient",
+        "content": "有，吐了两次"
+      },
+      {
+        "role": "doctor",
+        "content": "最近吃了什么不干净的东西吗？"
+      },
+      {
+        "role": "patient",
+        "content": "前天晚上吃了顿火锅，第二天就开始不舒服了"
+      },
+      {
+        "role": "doctor",
+        "content": "有没有发热？"
+      },
+      {
+        "role": "patient",
+        "content": "没有发烧，就是肚子一直疼"
+      },
+      {
+        "role": "doctor",
+        "content": "考虑急性胃肠炎，注意补充水分，吃点蒙脱石散和益生菌"
+      }
+    ],
+    "symptoms": [
+      "腹痛",
+      "腹泻",
+      "恶心",
+      "呕吐",
+      "食欲不振"
+    ],
+    "final_diagnosis": "急性胃肠炎",
+    "source": "模拟数据",
+    "note": "此数据为人工设计的模拟问诊对话，不对应任何真实患者"
+  },
+  {
+    "session_id": "sim_003",
+    "chief_complaint": "反酸烧心一个月",
+    "dialogue": [
+      {
+        "role": "patient",
+        "content": "医生，我最近一个月老是反酸，烧心"
+      },
+      {
+        "role": "doctor",
+        "content": "什么时侯最明显？饭后还是空腹？"
+      },
+      {
+        "role": "patient",
+        "content": "吃完饭以后特别明显，尤其是吃辣的"
+      },
+      {
+        "role": "doctor",
+        "content": "晚上睡觉的时候有没有加重？"
+      },
+      {
+        "role": "patient",
+        "content": "有的，平躺的时候更难受"
+      },
+      {
+        "role": "doctor",
+        "content": "有没有打嗝？"
+      },
+      {
+        "role": "patient",
+        "content": "经常打嗝"
+      },
+      {
+        "role": "doctor",
+        "content": "做过胃镜吗？"
+      },
+      {
+        "role": "patient",
+        "content": "没有"
+      },
+      {
+        "role": "doctor",
+        "content": "建议做个胃镜，目前考虑胃食管反流，先吃奥美拉唑，少吃辛辣油腻"
+      }
+    ],
+    "symptoms": [
+      "反酸",
+      "上腹痛",
+      "嗳气",
+      "口干"
+    ],
+    "final_diagnosis": "胃食管反流病",
+    "source": "模拟数据",
+    "note": "此数据为人工设计的模拟问诊对话，不对应任何真实患者"
+  },
+  {
+    "session_id": "sim_004",
+    "chief_complaint": "打喷嚏流鼻涕一个月",
+    "dialogue": [
+      {
+        "role": "patient",
+        "content": "医生，我最近老是打喷嚏，流清鼻涕"
+      },
+      {
+        "role": "doctor",
+        "content": "持续多长时间了？"
+      },
+      {
+        "role": "patient",
+        "content": "差不多一个月了"
+      },
+      {
+        "role": "doctor",
+        "content": "什么情况下会加重？"
+      },
+      {
+        "role": "patient",
+        "content": "早上起床和遇到灰尘的时候最厉害"
+      },
+      {
+        "role": "doctor",
+        "content": "鼻子痒不痒？"
+      },
+      {
+        "role": "patient",
+        "content": "特别痒"
+      },
+      {
+        "role": "doctor",
+        "content": "有没有眼睛痒？"
+      },
+      {
+        "role": "patient",
+        "content": "也有点"
+      },
+      {
+        "role": "doctor",
+        "content": "考虑过敏性鼻炎，可以用氯雷他定和鼻喷激素"
+      }
+    ],
+    "symptoms": [
+      "打喷嚏",
+      "流涕",
+      "鼻塞",
+      "嗅觉减退"
+    ],
+    "final_diagnosis": "过敏性鼻炎",
+    "source": "模拟数据",
+    "note": "此数据为人工设计的模拟问诊对话，不对应任何真实患者"
+  },
+  {
+    "session_id": "sim_005",
+    "chief_complaint": "头晕头痛一周",
+    "dialogue": [
+      {
+        "role": "patient",
+        "content": "医生，我最近总是头晕头疼"
+      },
+      {
+        "role": "doctor",
+        "content": "血压量过吗？"
+      },
+      {
+        "role": "patient",
+        "content": "在家里量过，好像偏高"
+      },
+      {
+        "role": "doctor",
+        "content": "最高多少？"
+      },
+      {
+        "role": "patient",
+        "content": "高压160左右"
+      },
+      {
+        "role": "doctor",
+        "content": "有没有心慌、睡眠不好？"
+      },
+      {
+        "role": "patient",
+        "content": "有的，晚上睡不着，心跳也快"
+      },
+      {
+        "role": "doctor",
+        "content": "之前有高血压病史吗？"
+      },
+      {
+        "role": "patient",
+        "content": "以前体检说过偏高，但没吃药"
+      },
+      {
+        "role": "doctor",
+        "content": "需要开始规律服药了，先用氨氯地平，每天监测血压"
+      }
+    ],
+    "symptoms": [
+      "头晕",
+      "头痛",
+      "心悸",
+      "失眠"
+    ],
+    "final_diagnosis": "高血压",
+    "source": "模拟数据",
+    "note": "此数据为人工设计的模拟问诊对话，不对应任何真实患者"
+  },
+  {
+    "session_id": "sim_006",
+    "chief_complaint": "口渴多尿三个月",
+    "dialogue": [
+      {
+        "role": "patient",
+        "content": "医生，我最近特别容易口渴，喝水多，尿也多"
+      },
+      {
+        "role": "doctor",
+        "content": "持续多长时间了？"
+      },
+      {
+        "role": "patient",
+        "content": "大概三个月了"
+      },
+      {
+        "role": "doctor",
+        "content": "饭量有没有变化？"
+      },
+      {
+        "role": "patient",
+        "content": "吃得比以前多了，但体重反而下降了"
+      },
+      {
+        "role": "doctor",
+        "content": "瘦了多少斤？"
+      },
+      {
+        "role": "patient",
+        "content": "大概十斤左右"
+      },
+      {
+        "role": "doctor",
+        "content": "有没有查过血糖？"
+      },
+      {
+        "role": "patient",
+        "content": "没有查过"
+      },
+      {
+        "role": "doctor",
+        "content": "需要查空腹血糖和糖化血红蛋白，怀疑糖尿病"
+      }
+    ],
+    "symptoms": [
+      "多饮",
+      "多尿",
+      "多食",
+      "消瘦",
+      "乏力"
+    ],
+    "final_diagnosis": "2型糖尿病",
+    "source": "模拟数据",
+    "note": "此数据为人工设计的模拟问诊对话，不对应任何真实患者"
+  }
+]

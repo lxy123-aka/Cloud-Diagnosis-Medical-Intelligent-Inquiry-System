@@ -1,0 +1,338 @@
+[
+  {
+    "text": "患者头痛、发热、咳嗽一周",
+    "entities": [
+      {
+        "text": "头痛",
+        "label": "SYMPTOM",
+        "standard_name": "头痛",
+        "start": 2,
+        "end": 4
+      },
+      {
+        "text": "发热",
+        "label": "SYMPTOM",
+        "standard_name": "发热",
+        "start": 5,
+        "end": 7
+      },
+      {
+        "text": "咳嗽",
+        "label": "SYMPTOM",
+        "standard_name": "咳嗽",
+        "start": 8,
+        "end": 10
+      }
+    ],
+    "diagnosis": "上呼吸道感染",
+    "source": "模拟数据"
+  },
+  {
+    "text": "我头胀，发烧，咳，有几天",
+    "entities": [
+      {
+        "text": "头胀",
+        "label": "SYMPTOM",
+        "standard_name": "头痛",
+        "start": 1,
+        "end": 3
+      },
+      {
+        "text": "发烧",
+        "label": "SYMPTOM",
+        "standard_name": "发热",
+        "start": 4,
+        "end": 6
+      },
+      {
+        "text": "咳",
+        "label": "SYMPTOM",
+        "standard_name": "咳嗽",
+        "start": 7,
+        "end": 8
+      }
+    ],
+    "diagnosis": "上呼吸道感染",
+    "source": "模拟数据（口语化）"
+  },
+  {
+    "text": "患者腹痛、腹泻、恶心一周",
+    "entities": [
+      {
+        "text": "腹痛",
+        "label": "SYMPTOM",
+        "standard_name": "腹痛",
+        "start": 2,
+        "end": 4
+      },
+      {
+        "text": "腹泻",
+        "label": "SYMPTOM",
+        "standard_name": "腹泻",
+        "start": 5,
+        "end": 7
+      },
+      {
+        "text": "恶心",
+        "label": "SYMPTOM",
+        "standard_name": "恶心",
+        "start": 8,
+        "end": 10
+      }
+    ],
+    "diagnosis": "急性胃肠炎",
+    "source": "模拟数据"
+  },
+  {
+    "text": "我肚肚痛，大便稀，想吐，有几天",
+    "entities": [
+      {
+        "text": "肚肚痛",
+        "label": "SYMPTOM",
+        "standard_name": "腹痛",
+        "start": 1,
+        "end": 4
+      },
+      {
+        "text": "大便稀",
+        "label": "SYMPTOM",
+        "standard_name": "腹泻",
+        "start": 5,
+        "end": 8
+      },
+      {
+        "text": "想吐",
+        "label": "SYMPTOM",
+        "standard_name": "恶心",
+        "start": 9,
+        "end": 11
+      }
+    ],
+    "diagnosis": "急性胃肠炎",
+    "source": "模拟数据（口语化）"
+  },
+  {
+    "text": "患者反酸、上腹痛、嗳气两天",
+    "entities": [
+      {
+        "text": "反酸",
+        "label": "SYMPTOM",
+        "standard_name": "反酸",
+        "start": 2,
+        "end": 4
+      },
+      {
+        "text": "上腹痛",
+        "label": "SYMPTOM",
+        "standard_name": "上腹痛",
+        "start": 5,
+        "end": 8
+      },
+      {
+        "text": "嗳气",
+        "label": "SYMPTOM",
+        "standard_name": "嗳气",
+        "start": 9,
+        "end": 11
+      }
+    ],
+    "diagnosis": "胃食管反流病",
+    "source": "模拟数据"
+  },
+  {
+    "text": "我胃酸，上腹痛，嗳气，有一周多了",
+    "entities": [
+      {
+        "text": "胃酸",
+        "label": "SYMPTOM",
+        "standard_name": "反酸",
+        "start": 1,
+        "end": 3
+      },
+      {
+        "text": "上腹痛",
+        "label": "SYMPTOM",
+        "standard_name": "上腹痛",
+        "start": 4,
+        "end": 7
+      },
+      {
+        "text": "嗳气",
+        "label": "SYMPTOM",
+        "standard_name": "嗳气",
+        "start": 8,
+        "end": 10
+      }
+    ],
+    "diagnosis": "胃食管反流病",
+    "source": "模拟数据（口语化）"
+  },
+  {
+    "text": "患者打喷嚏、流涕、鼻塞一周",
+    "entities": [
+      {
+        "text": "打喷嚏",
+        "label": "SYMPTOM",
+        "standard_name": "打喷嚏",
+        "start": 2,
+        "end": 5
+      },
+      {
+        "text": "流涕",
+        "label": "SYMPTOM",
+        "standard_name": "流涕",
+        "start": 6,
+        "end": 8
+      },
+      {
+        "text": "鼻塞",
+        "label": "SYMPTOM",
+        "standard_name": "鼻塞",
+        "start": 9,
+        "end": 11
+      }
+    ],
+    "diagnosis": "过敏性鼻炎",
+    "source": "模拟数据"
+  },
+  {
+    "text": "我打喷嚏，流涕，鼻子堵了，有几天",
+    "entities": [
+      {
+        "text": "打喷嚏",
+        "label": "SYMPTOM",
+        "standard_name": "打喷嚏",
+        "start": 1,
+        "end": 4
+      },
+      {
+        "text": "流涕",
+        "label": "SYMPTOM",
+        "standard_name": "流涕",
+        "start": 5,
+        "end": 7
+      },
+      {
+        "text": "鼻子堵了",
+        "label": "SYMPTOM",
+        "standard_name": "鼻塞",
+        "start": 8,
+        "end": 12
+      }
+    ],
+    "diagnosis": "过敏性鼻炎",
+    "source": "模拟数据（口语化）"
+  },
+  {
+    "text": "患者头晕、头痛、心悸两天",
+    "entities": [
+      {
+        "text": "头晕",
+        "label": "SYMPTOM",
+        "standard_name": "头晕",
+        "start": 2,
+        "end": 4
+      },
+      {
+        "text": "头痛",
+        "label": "SYMPTOM",
+        "standard_name": "头痛",
+        "start": 5,
+        "end": 7
+      },
+      {
+        "text": "心悸",
+        "label": "SYMPTOM",
+        "standard_name": "心悸",
+        "start": 8,
+        "end": 10
+      }
+    ],
+    "diagnosis": "高血压",
+    "source": "模拟数据"
+  },
+  {
+    "text": "我头昏，头疼，心悸，有几天",
+    "entities": [
+      {
+        "text": "头昏",
+        "label": "SYMPTOM",
+        "standard_name": "头晕",
+        "start": 1,
+        "end": 3
+      },
+      {
+        "text": "头疼",
+        "label": "SYMPTOM",
+        "standard_name": "头痛",
+        "start": 4,
+        "end": 6
+      },
+      {
+        "text": "心悸",
+        "label": "SYMPTOM",
+        "standard_name": "心悸",
+        "start": 7,
+        "end": 9
+      }
+    ],
+    "diagnosis": "高血压",
+    "source": "模拟数据（口语化）"
+  },
+  {
+    "text": "患者多饮、多尿、多食三天",
+    "entities": [
+      {
+        "text": "多饮",
+        "label": "SYMPTOM",
+        "standard_name": "多饮",
+        "start": 2,
+        "end": 4
+      },
+      {
+        "text": "多尿",
+        "label": "SYMPTOM",
+        "standard_name": "多尿",
+        "start": 5,
+        "end": 7
+      },
+      {
+        "text": "多食",
+        "label": "SYMPTOM",
+        "standard_name": "多食",
+        "start": 8,
+        "end": 10
+      }
+    ],
+    "diagnosis": "2型糖尿病",
+    "source": "模拟数据"
+  },
+  {
+    "text": "我多饮，多尿，多食，有两三天",
+    "entities": [
+      {
+        "text": "多饮",
+        "label": "SYMPTOM",
+        "standard_name": "多饮",
+        "start": 1,
+        "end": 3
+      },
+      {
+        "text": "多尿",
+        "label": "SYMPTOM",
+        "standard_name": "多尿",
+        "start": 4,
+        "end": 6
+      },
+      {
+        "text": "多食",
+        "label": "SYMPTOM",
+        "standard_name": "多食",
+        "start": 7,
+        "end": 9
+      }
+    ],
+    "diagnosis": "2型糖尿病",
+    "source": "模拟数据（口语化）"
+  }
+]
