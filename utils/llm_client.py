@@ -18,6 +18,7 @@ from typing import Optional
 from pathlib import Path
 from loguru import logger
 from openai import AsyncOpenAI
+from openai import RateLimitError, APIConnectionError
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from configs.settings import settings
@@ -36,6 +37,30 @@ class LLMClient:
         )
         self._text_model = settings.QWEN_MODEL_NAME
         self._vl_model = settings.QWEN_VL_MODEL_NAME
+        # 降级模型列表：主模型额度用完时自动切换
+        self._text_fallbacks = [
+            m.strip() for m in settings.QWEN_FALLBACK_MODELS.split(",") if m.strip()
+        ]
+        self._vl_fallbacks = [
+            m.strip() for m in settings.QWEN_VL_FALLBACK_MODELS.split(",") if m.strip()
+        ]
+
+    @staticmethod
+    def _is_rate_limit_error(e: Exception) -> bool:
+        """判断是否为额度/限流类错误（可降级到其他模型）"""
+        if isinstance(e, RateLimitError):
+            return True
+        status = getattr(e, "status_code", None)
+        return status in (429, 402)
+
+    def _get_model_chain(self, model: str, is_vl: bool = False) -> list[str]:
+        """获取模型降级链：[主模型, 备用1, 备用2, ...]"""
+        fallbacks = self._vl_fallbacks if is_vl else self._text_fallbacks
+        chain = [model]
+        for fb in fallbacks:
+            if fb != model:
+                chain.append(fb)
+        return chain
 
     # ============================================================
     # 文本模型调用
@@ -52,7 +77,7 @@ class LLMClient:
         tool_choice: dict = None,
     ) -> str:
         """
-        通用文本对话接口。
+        通用文本对话接口，支持模型自动降级。
 
         :param messages: 消息列表 [{"role": "user", "content": "..."}]
         :param model: 模型名称（默认使用配置中的模型）
@@ -67,7 +92,6 @@ class LLMClient:
         max_tokens = max_tokens or settings.QWEN_MAX_TOKENS
 
         kwargs = {
-            "model": model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -78,8 +102,24 @@ class LLMClient:
             if tool_choice:
                 kwargs["tool_choice"] = tool_choice
 
-        response = await self._client.chat.completions.create(**kwargs)
-        return response.choices[0].message.content
+        # 模型降级链：主模型 → 备用模型1 → 备用模型2 → ...
+        last_error = None
+        for try_model in self._get_model_chain(model, is_vl=False):
+            try:
+                response = await self._client.chat.completions.create(
+                    model=try_model, **kwargs
+                )
+                if try_model != model:
+                    logger.info(f"[LLMClient] 已降级到备用模型: {try_model}")
+                return response.choices[0].message.content
+            except Exception as e:
+                if self._is_rate_limit_error(e) and try_model != self._get_model_chain(model, is_vl=False)[-1]:
+                    logger.warning(f"[LLMClient] 模型 {try_model} 额度用尽，尝试下一个备用模型...")
+                    last_error = e
+                    continue
+                raise
+        # 所有模型都失败
+        raise last_error
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
     async def chat_with_tools(
@@ -91,7 +131,7 @@ class LLMClient:
         temperature: float = 0.0,
     ) -> dict:
         """
-        带 Function Calling 的对话接口。
+        带 Function Calling 的对话接口，支持模型自动降级。
 
         :return: 解析后的工具调用参数 dict
         """
@@ -103,21 +143,34 @@ class LLMClient:
                 "function": {"name": tools[0]["function"]["name"]},
             }
 
-        response = await self._client.chat.completions.create(
-            model=model,
-            messages=messages,
-            tools=tools,
-            tool_choice=tool_choice,
-            temperature=temperature,
-        )
+        # 模型降级链
+        last_error = None
+        for try_model in self._get_model_chain(model, is_vl=False):
+            try:
+                response = await self._client.chat.completions.create(
+                    model=try_model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice=tool_choice,
+                    temperature=temperature,
+                )
+                if try_model != model:
+                    logger.info(f"[LLMClient] chat_with_tools 已降级到备用模型: {try_model}")
 
-        try:
-            tool_call = response.choices[0].message.tool_calls[0]
-            args = tool_call["args"] if isinstance(tool_call["args"], dict) else json.loads(tool_call["args"])
-            return args
-        except (AttributeError, IndexError, KeyError, json.JSONDecodeError) as e:
-            logger.warning(f"[LLMClient] Function Calling 解析失败: {e}")
-            return {}
+                try:
+                    tool_call = response.choices[0].message.tool_calls[0]
+                    args = tool_call["args"] if isinstance(tool_call["args"], dict) else json.loads(tool_call["args"])
+                    return args
+                except (AttributeError, IndexError, KeyError, json.JSONDecodeError) as e:
+                    logger.warning(f"[LLMClient] Function Calling 解析失败: {e}")
+                    return {}
+            except Exception as e:
+                if self._is_rate_limit_error(e) and try_model != self._get_model_chain(model, is_vl=False)[-1]:
+                    logger.warning(f"[LLMClient] 模型 {try_model} 额度用尽，尝试下一个备用模型...")
+                    last_error = e
+                    continue
+                raise
+        raise last_error
 
     async def simple_chat(self, user_message: str, system_prompt: str = "") -> str:
         """
@@ -148,7 +201,7 @@ class LLMClient:
         max_tokens: int = 2048,
     ) -> str:
         """
-        多模态对话接口（图文混合）。
+        多模态对话接口（图文混合），支持模型自动降级。
 
         :param prompt: 文本提示
         :param image_data: 图片二进制数据
@@ -159,22 +212,34 @@ class LLMClient:
         model = model or self._vl_model
         image_url = self._prepare_image_url(image_data, image_path)
 
-        response = await self._client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image_url", "image_url": {"url": image_url}},
-                        {"type": "text", "text": prompt},
+        # 模型降级链
+        last_error = None
+        for try_model in self._get_model_chain(model, is_vl=True):
+            try:
+                response = await self._client.chat.completions.create(
+                    model=try_model,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "image_url", "image_url": {"url": image_url}},
+                                {"type": "text", "text": prompt},
+                            ],
+                        }
                     ],
-                }
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-
-        return response.choices[0].message.content
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                if try_model != model:
+                    logger.info(f"[LLMClient] vision_chat 已降级到备用模型: {try_model}")
+                return response.choices[0].message.content
+            except Exception as e:
+                if self._is_rate_limit_error(e) and try_model != self._get_model_chain(model, is_vl=True)[-1]:
+                    logger.warning(f"[LLMClient] 多模态模型 {try_model} 额度用尽，尝试下一个备用模型...")
+                    last_error = e
+                    continue
+                raise
+        raise last_error
 
     # ============================================================
     # 内部辅助方法

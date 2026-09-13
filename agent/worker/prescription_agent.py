@@ -16,7 +16,7 @@ import json
 import re
 from loguru import logger
 from langchain_core.messages import AIMessage
-from langchain_openai import ChatOpenAI
+from utils.fallback_llm import FallbackChatOpenAI as ChatOpenAI
 
 from state.state_schema import InquiryState
 from configs.settings import settings
@@ -33,9 +33,6 @@ def _get_prescription_parse_llm() -> ChatOpenAI:
     global _prescription_parse_llm
     if _prescription_parse_llm is None:
         _prescription_parse_llm = ChatOpenAI(
-            model=settings.QWEN_MODEL_NAME,
-            api_key=settings.QWEN_API_KEY,
-            base_url=settings.QWEN_BASE_URL,
             temperature=0.0,
         )
     return _prescription_parse_llm
@@ -46,9 +43,6 @@ def _get_prescription_review_llm() -> ChatOpenAI:
     global _prescription_review_llm
     if _prescription_review_llm is None:
         _prescription_review_llm = ChatOpenAI(
-            model=settings.QWEN_MODEL_NAME,
-            api_key=settings.QWEN_API_KEY,
-            base_url=settings.QWEN_BASE_URL,
             temperature=0.2,
             max_tokens=1024,
         )

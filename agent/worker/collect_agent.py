@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from loguru import logger
 from langchain_core.messages import AIMessage, HumanMessage
-from langchain_openai import ChatOpenAI
+from utils.fallback_llm import FallbackChatOpenAI as ChatOpenAI
 
 from state.state_schema import InquiryState
 from pipeline.symptom_normalize import SymptomNormalizePipeline
@@ -54,9 +54,6 @@ def _get_follow_up_llm() -> ChatOpenAI:
     global _follow_up_llm
     if _follow_up_llm is None:
         _follow_up_llm = ChatOpenAI(
-            model=settings.QWEN_MODEL_NAME,
-            api_key=settings.QWEN_API_KEY,
-            base_url=settings.QWEN_BASE_URL,
             temperature=0.5,
             max_tokens=200,
         )

@@ -13,7 +13,7 @@ agent/worker/drug_agent.py
 from __future__ import annotations
 from loguru import logger
 from langchain_core.messages import AIMessage
-from langchain_openai import ChatOpenAI
+from utils.fallback_llm import FallbackChatOpenAI as ChatOpenAI
 
 from state.state_schema import InquiryState
 from configs.settings import settings
@@ -29,9 +29,6 @@ def _get_drug_llm() -> ChatOpenAI:
     global _drug_llm
     if _drug_llm is None:
         _drug_llm = ChatOpenAI(
-            model=settings.QWEN_MODEL_NAME,
-            api_key=settings.QWEN_API_KEY,
-            base_url=settings.QWEN_BASE_URL,
             temperature=0.3,
             max_tokens=1024,
         )
