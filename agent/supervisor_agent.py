@@ -1,16 +1,14 @@
 """
 agent/supervisor_agent.py
 =========================
-Supervisor 调度 Agent —— 多智能体系统的"大脑"。
+Supervisor 调度 Agent —— 多智能体系统的“大脑”。
 
 职责：
   1. 调用 Qwen3.5 做意图识别（Function Calling 确定性分类）
   2. 控制问诊轮次上限（最多 10 轮）
   3. 读取诊断置信度，执行收敛规则：
-     - 当前轮数 ≥ MIN_INQUIRY_ROUNDS（至少追问3轮）
-     - Top1 置信度 ≥ 85%
-     - Top1 - Top2 差值 ≥ 30%
-     - 达到最大追问轮数（强制收敛）
+     - 双条件收敛：Top1 ≥ 70% 或 Top1-Top2 差值 ≥ 30%
+     - 最小追问轮数门控（至少 3 轮）+ 最大轮数强制收敛（10 轮兜底）
      满足收敛条件 → 终止问诊
   4. 更新 state，输出下一步 worker 名称
 """
@@ -19,7 +17,7 @@ from __future__ import annotations
 import json
 from loguru import logger
 from langchain_core.messages import AIMessage, SystemMessage
-from langchain_openai import ChatOpenAI
+from utils.fallback_llm import FallbackChatOpenAI as ChatOpenAI
 
 from state.state_schema import InquiryState
 from configs.settings import settings
@@ -37,9 +35,6 @@ def _get_llm() -> ChatOpenAI:
     global _supervisor_llm
     if _supervisor_llm is None:
         _supervisor_llm = ChatOpenAI(
-            model=settings.QWEN_MODEL_NAME,
-            api_key=settings.QWEN_API_KEY,
-            base_url=settings.QWEN_BASE_URL,
             temperature=0.0,  # 确定性输出
         )
     return _supervisor_llm
@@ -227,11 +222,13 @@ def _check_convergence(state: InquiryState) -> dict:
     """
     检查诊断收敛条件。
 
-    收敛规则（满足任一即终止）：
-      1. 当前轮数 < 最小追问轮数 → 强制继续
-      2. Top1 置信度 ≥ CONFIDENCE_THRESHOLD（默认 85%）
-      3. Top1 - Top2 差值 ≥ CONFIDENCE_GAP（默认 30%）
-      4. 达到最大追问轮数 → 强制收敛
+    收敛规则：双条件收敛 + 最小轮数门控 + 最大轮数兜底
+      双条件（满足任一即终止）：
+        1. Top1 置信度 ≥ CONFIDENCE_THRESHOLD（默认 70%）
+        2. Top1 - Top2 差值 ≥ CONFIDENCE_GAP（默认 30%）
+      过程控制：
+        - 当前轮数 < 最小追问轮数 → 强制继续
+        - 达到最大追问轮数 → 强制收敛
 
     Returns:
         需要更新的 state 字段
@@ -274,7 +271,7 @@ def _check_convergence(state: InquiryState) -> dict:
         f"Top2_conf={top2_conf:.2f}, 差值={gap:.2f}, 轮次={current_round}/{max_rounds}"
     )
 
-    # ---- 条件2：Top1 置信度 ≥ 阈值（默认 85%） ----
+    # ---- 条件1：Top1 置信度 ≥ 阈值（默认 70%） ----
     if top1_conf >= settings.CONFIDENCE_THRESHOLD:
         logger.info(f"[Supervisor] Top1 置信度 {top1_conf:.2f} ≥ {settings.CONFIDENCE_THRESHOLD}，诊断收敛")
         return {

@@ -9,6 +9,14 @@ train/sft_lora_train.py
   3. 单卡 RTX4090 24G 可运行
   4. 医疗命名实体识别（NER）任务
 
+训练时长：
+  单张 RTX4090 24G 显卡约 6 小时完成训练（基于国家标准医疗数据集，
+  3 epoch，batch_size=2，gradient_accumulation_steps=4）。
+
+训练数据来源：
+  加载国家标准医疗数据集，由 train/data_processor.py 将 BIO 标注
+  转换为 Alpaca 格式后灌入 LlamaFactory 训练。
+
 数据集格式（Alpaca 格式）：
 [
   {

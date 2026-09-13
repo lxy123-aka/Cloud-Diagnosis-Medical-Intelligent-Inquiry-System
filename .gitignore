@@ -26,6 +26,7 @@ logs/
 
 # ---------- 模型权重与训练输出（大文件不入库） ----------
 models/
+models_cache/
 train/output/
 checkpoints/
 *.ckpt

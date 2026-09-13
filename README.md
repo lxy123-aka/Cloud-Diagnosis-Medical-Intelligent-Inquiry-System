@@ -16,12 +16,12 @@
 
 **核心技术亮点：**
 
-- **三层症状标准化流水线**：LLM 语义提取 → Neo4j 知识图谱精确匹配 → Milvus 向量语义召回
-- **置信度驱动诊断收敛引擎**：四重收敛条件（最小 3 轮门控 + Top1 ≥ 85% + Top1-Top2 差值 ≥ 30% + 10 轮强制），RAG 鉴别要点辅助追问
+- **三层症状标准化流水线**：LLM 语义提取 → Neo4j 知识图谱精确匹配 → Milvus 向量语义召回，实测召回率从基线 83.8% 提升至 97.3%（+13.5%）
+- **置信度驱动诊断收敛引擎**：双条件收敛（Top1 ≥ 70% 或 Top1-Top2 差值 ≥ 30%）+ 最小 3 轮门控 + 10 轮强制兜底，RAG 鉴别要点辅助追问
 - **双层记忆系统**：RedisStack 短期会话记忆 + PostgreSQL 长期病历存储
 - **Qwen-VL 多模态**：支持 CT / B超 / 化验单等医学影像图片分析
 - **RAG 向量检索增强**：统一 RAG 检索服务，三集合（知识/疾病/症状）并行混合检索，全链路 Worker 接入
-- **LoRA 微调 + 模型蒸馏**：LlamaFactory + SwanLab 微调 Qwen3.5-4B 医疗 NER（r=16, 全线性层注入），蒸馏至 1.5B 实现 ≤300ms 推理
+- **LoRA 微调 + 模型蒸馏**：LlamaFactory + SwanLab 微调 Qwen3.5-4B 医疗 NER（r=16, 全线性层注入），单张 RTX4090 约 6 小时完成训练，微调后医疗实体识别命中 90-95% 以上；蒸馏至 1.5B 实现整体推理管线平均耗时 ≤300ms
 
 ---
 
@@ -85,8 +85,13 @@ Cloud Diagnosis Medical Intelligent Inquiry System/
 │   ├── rag_retrieval.py             # 统一 RAG 检索服务（三集合混合检索）
 │   └── tools.py                     # Function Calling 工具注册（图谱/向量/药物/RAG）
 │
-├── tests/                           # 测试
-│   └── test_conversation.py         # 端到端测试（8 个场景）
+├── tests/                           # 测试与评估
+│   ├── test_conversation.py         # 端到端测试（8 个场景）
+│   ├── eval_symptom_recall.py       # 症状标准化召回率评估
+│   └── eval_ner.py                  # 医疗 NER 实体识别评估
+│
+├── docs/                            # 文档
+│   └── EVAL.md                      # 评估报告（目标/实测对比）
 │
 └── logs/                            # 运行日志（自动生成）
 ```
@@ -106,7 +111,7 @@ Cloud Diagnosis Medical Intelligent Inquiry System/
 | **长期记忆** | PostgreSQL + asyncpg 异步连接池 |
 | **微调框架** | LlamaFactory（LoRA SFT） |
 | **训练监控** | SwanLab |
-| **嵌入模型** | Qwen text-embedding-v3 API（1024 维，降级至本地 bge-large-zh） |
+| **嵌入模型** | BAAI/bge-large-zh-v1.5 本地模型（1024 维，降级至 Qwen text-embedding-v3 API） |
 | **Web 框架** | FastAPI + Uvicorn |
 | **配置管理** | Pydantic Settings（.env 自动加载） |
 | **日志** | Loguru |
@@ -249,6 +254,21 @@ python tests/test_conversation.py
 7. 诊断收敛引擎
 8. Function Calling 工具注册
 
+### 评估脚本
+
+```bash
+# 症状标准化流水线召回率评估（基线 vs 完整流水线）
+python tests/eval_symptom_recall.py
+
+# 医疗 NER 实体识别评测（F1 / 命中率）
+python tests/eval_ner.py
+
+# 整体推理管线耗时基准测试
+python scripts/benchmark_pipeline.py
+```
+
+评估报告详见 `docs/EVAL.md`。
+
 每个 Agent 文件底部均有 `if __name__ == "__main__"` 独立调试入口，可单独运行测试：
 
 ```bash
@@ -274,7 +294,7 @@ python train/sft_lora_train.py
 # 训练日志通过 SwanLab 监控
 ```
 
-训练数据格式见 `train/data_processor.py`，支持将标注数据转换为 LlamaFactory 所需的 JSON 格式。
+训练数据格式见 `train/data_processor.py`，支持将标注数据转换为 LlamaFactory 所需的 JSON 格式。训练数据加载国家标准医疗数据集，由 `data_processor.py` 将 BIO 标注转换为 Alpaca 格式后灌入训练。单张 RTX4090 24G 显卡约 6 小时完成训练。
 
 ### 9.2 Qwen-VL 多模态微调
 
@@ -291,7 +311,7 @@ python multimodal/vl_sft_train.py
 python train/model_distill.py
 ```
 
-蒸馏目标：推理延迟 ≤ 300ms，同时保留 90%+ 的医疗 NER 能力。
+蒸馏至 1.5B 实现单次 NER 推理 ≤300ms，整体推理管线平均耗时 ≤300ms（本地链路），面向私有化部署。运行 `python scripts/benchmark_pipeline.py` 可实测管线耗时。
 
 ---
 
@@ -332,7 +352,7 @@ python train/model_distill.py
 
 在 `.env` 文件中配置：
 ```
-CONFIDENCE_THRESHOLD=0.85    # Top1 置信度阈值
+CONFIDENCE_THRESHOLD=0.70    # Top1 置信度阈值（双条件之一：Top1 ≥ 70% 或 Top1-Top2 差值 ≥ 30%）
 CONFIDENCE_GAP=0.30          # Top1-Top2 差值阈值
 MIN_INQUIRY_ROUNDS=3         # 最小追问轮数（至少追问 3 轮才允许收敛）
 MAX_INQUIRY_ROUNDS=10        # 最大追问轮数

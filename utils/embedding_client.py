@@ -1,8 +1,11 @@
 """
 utils/embedding_client.py
 =========================
-统一嵌入模型客户端，支持本地模型和 Qwen Embedding API。
-优先使用 Qwen API（无需下载模型），fallback 到本地模型。
+统一嵌入模型客户端，优先使用本地模型，Qwen Embedding API 作为降级。
+
+本地模型：BAAI/bge-large-zh-v1.5（1024 维）
+模型路径：./models_cache/bge-large-zh-v1.5
+通过 scripts/download_embedding_model.py 从镜像源下载。
 """
 
 from __future__ import annotations
@@ -14,18 +17,21 @@ from configs.settings import settings
 class EmbeddingClient:
     """
     嵌入模型客户端。
-    支持两种模式：
-    1. Qwen Embedding API（推荐，无需下载模型）
-    2. 本地 SentenceTransformer 模型（fallback）
+    优先使用本地 bge-large-zh-v1.5 模型，Qwen API 作为降级方案。
     """
 
     def __init__(self):
-        self._use_api = True  # 默认使用 API
-        self._api_model = "text-embedding-v3"  # Qwen 中文嵌入模型
+        self._use_api = False  # 优先使用本地模型
+        self._api_model = "text-embedding-v3"  # Qwen 中文嵌入模型（降级用）
         self._local_model = None
+        self._local_model_path = str(settings.BASE_DIR / "models_cache" / "bge-large-zh-v1.5")
         
-        # 不自动加载本地模型（避免 SSL 问题），只在 API 失败时按需加载
-        logger.info("[EmbeddingClient] 初始化完成，将优先使用 Qwen Embedding API")
+        # 启动时自动加载本地模型
+        if not self._load_local_model():
+            logger.warning("[EmbeddingClient] 本地模型加载失败，将使用 Qwen Embedding API")
+            self._use_api = True
+        else:
+            logger.info("[EmbeddingClient] 本地模型加载完成，使用 bge-large-zh-v1.5")
 
     async def encode(self, texts: list[str], normalize: bool = True) -> np.ndarray:
         """
@@ -54,10 +60,22 @@ class EmbeddingClient:
             
         except Exception as e:
             logger.error(f"[EmbeddingClient] 编码失败: {e}")
-            # 降级：返回随机向量（仅作为最后手段，检索结果将无意义）
+            # 本地模型失败时尝试 API 降级
+            if not self._use_api:
+                logger.warning("[EmbeddingClient] 本地模型编码失败，尝试 Qwen API...")
+                try:
+                    embeddings = await self._encode_via_api(texts)
+                    if normalize:
+                        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+                        norms = np.where(norms == 0, 1, norms)
+                        embeddings = embeddings / norms
+                    return embeddings
+                except Exception as api_err:
+                    logger.error(f"[EmbeddingClient] API 降级也失败: {api_err}")
+            # 最终降级：返回随机向量
             logger.warning(
                 f"[EmbeddingClient] 降级为随机向量（{len(texts)} 条文本），"
-                "检索结果将无实际语义意义，请检查 Embedding 服务配置"
+                "检索结果将无实际语义意义"
             )
             return np.random.randn(len(texts), settings.EMBEDDING_DIMENSION)
 
@@ -93,6 +111,32 @@ class EmbeddingClient:
         except Exception as e:
             logger.error(f"[EmbeddingClient] API 调用失败: {e}")
             raise  # 向上抛出，让 encode() 统一处理降级
+
+    def _load_local_model(self) -> bool:
+        """
+        懒加载本地 SentenceTransformer 模型。
+        返回 True 表示加载成功，False 表示模型不存在或加载失败。
+        """
+        if self._local_model is not None:
+            return True  # 已加载
+
+        import os
+        if not os.path.exists(self._local_model_path):
+            logger.warning(
+                f"[EmbeddingClient] 本地模型不存在: {self._local_model_path}\n"
+                f"  运行 python scripts/download_embedding_model.py 下载"
+            )
+            return False
+
+        try:
+            from sentence_transformers import SentenceTransformer
+            logger.info(f"[EmbeddingClient] 加载本地模型: {self._local_model_path}")
+            self._local_model = SentenceTransformer(self._local_model_path)
+            logger.info("[EmbeddingClient] 本地模型加载成功")
+            return True
+        except Exception as e:
+            logger.error(f"[EmbeddingClient] 本地模型加载失败: {e}")
+            return False
 
     def _encode_local(self, texts: list[str]) -> np.ndarray:
         """使用本地 SentenceTransformer 模型编码"""

@@ -8,9 +8,8 @@ pipeline/diagnosis_engine.py
   2. 查询 Neo4j 知识图谱获取候选疾病集合
   3. 多维症状加权计算疾病置信度
   4. 实现收敛判断：
-     - Top1 置信度 ≥ 85%
-     - Top1 - Top2 差值 ≥ 30%
-     - 最小追问轮数门控 + 最大轮数强制收敛
+     - 双条件收敛：Top1 置信度 ≥ 70% 或 Top1 - Top2 差值 ≥ 30%
+     - 最小追问轮数门控（至少 3 轮）+ 最大轮数强制收敛（10 轮兜底）
   5. 返回 top 候选疾病、置信度差值，判断问诊是否结束
 """
 
@@ -18,7 +17,7 @@ from __future__ import annotations
 import json
 import re
 from loguru import logger
-from langchain_openai import ChatOpenAI
+from utils.fallback_llm import FallbackChatOpenAI as ChatOpenAI
 
 from configs.settings import settings
 
@@ -31,9 +30,6 @@ class DiagnosisEngine:
 
     def __init__(self):
         self._llm = ChatOpenAI(
-            model=settings.QWEN_MODEL_NAME,
-            api_key=settings.QWEN_API_KEY,
-            base_url=settings.QWEN_BASE_URL,
             temperature=0.2,
         )
 
@@ -297,10 +293,14 @@ class DiagnosisEngine:
     ) -> tuple[bool, str]:
         """
         检查是否满足收敛条件。
-        条件1：当前轮数 >= MIN_INQUIRY_ROUNDS（至少追问3轮）
-        条件2：Top1 置信度 ≥ 85%
-        条件3：Top1 - Top2 差值 ≥ 30%
-        条件4：达到最大追问轮数
+
+        收敛策略：双条件收敛 + 最小轮数门控 + 最大轮数兜底
+          - 双条件（满足任一即收敛）：
+            条件1：Top1 置信度 ≥ 70%
+            条件2：Top1 - Top2 差值 ≥ 30%
+          - 过程控制：
+            最小追问轮数门控：未达到 MIN_INQUIRY_ROUNDS 不允许收敛
+            最大追问轮数兜底：达到 MAX_INQUIRY_ROUNDS 强制收敛
         """
         if not candidates:
             return False, ""

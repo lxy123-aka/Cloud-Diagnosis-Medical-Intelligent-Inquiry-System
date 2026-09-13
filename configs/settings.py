@@ -85,6 +85,8 @@ class Settings(BaseSettings):
     QWEN_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     QWEN_MODEL_NAME: str = "qwen-plus"
     QWEN_VL_MODEL_NAME: str = "qwen-vl-max"
+    QWEN_FALLBACK_MODELS: str = "qwen-turbo,qwen-long"      # 文本模型降级列表（逗号分隔）
+    QWEN_VL_FALLBACK_MODELS: str = "qwen-vl-plus"            # 多模态模型降级列表（逗号分隔）
     QWEN_TEMPERATURE: float = 0.3
     QWEN_MAX_TOKENS: int = 2048
 
@@ -134,7 +136,7 @@ class Settings(BaseSettings):
     SWANLAB_PROJECT: str = "cloud_diagnosis_medical"
 
     # ===== 诊断收敛参数 =====
-    CONFIDENCE_THRESHOLD: float = 0.85   # Top1 置信度阈值（提高到0.85避免过早收敛）
+    CONFIDENCE_THRESHOLD: float = 0.70   # 双条件之一：Top1 置信度阈值（Top1 ≥ 70% 或 Top1-Top2 差值 ≥ 30%）
     CONFIDENCE_GAP: float = 0.30         # Top1-Top2 差值阈值
     MIN_INQUIRY_ROUNDS: int = 3          # 最小追问轮数（至少追问3轮才允许收敛）
     MAX_INQUIRY_ROUNDS: int = 10         # 最大追问轮数

@@ -20,6 +20,28 @@ from langchain_openai import ChatOpenAI
 from configs.settings import settings
 
 
+def _is_rate_limit_error(e: Exception) -> bool:
+    """判断是否为额度/限流类错误（可降级到其他模型）"""
+    status = getattr(e, "status_code", None)
+    # langchain 异常可能包装了 status_code；也检查字符串匹配
+    err_str = str(e).lower()
+    return (
+        status in (429, 402)
+        or "rate limit" in err_str
+        or "quota" in err_str
+    )
+
+
+def _build_chat_openai(model_name: str) -> ChatOpenAI:
+    """构建指定模型的 ChatOpenAI 实例"""
+    return ChatOpenAI(
+        model=model_name,
+        api_key=settings.QWEN_API_KEY,
+        base_url=settings.QWEN_BASE_URL,
+        temperature=0.1,
+    )
+
+
 class SymptomNormalizePipeline:
     """三层症状标准化流水线"""
 
@@ -29,12 +51,25 @@ class SymptomNormalizePipeline:
     _symptom_whitelist: set[str] = None  # 标准症状名称白名单（懒加载）
 
     def __init__(self):
-        self._llm = ChatOpenAI(
-            model=settings.QWEN_MODEL_NAME,
-            api_key=settings.QWEN_API_KEY,
-            base_url=settings.QWEN_BASE_URL,
-            temperature=0.1,
-        )
+        # 主模型 + 降级模型链
+        self._model_chain = [settings.QWEN_MODEL_NAME]
+        for m in settings.QWEN_FALLBACK_MODELS.split(","):
+            m = m.strip()
+            if m and m not in self._model_chain:
+                self._model_chain.append(m)
+        # 懒加载：按需创建 ChatOpenAI 实例（避免启动时初始化所有模型）
+        self._llm_instances: dict[str, ChatOpenAI] = {}
+
+    def _get_llm(self, model_name: str) -> ChatOpenAI:
+        """获取或创建指定模型的 ChatOpenAI 实例（懒加载缓存）"""
+        if model_name not in self._llm_instances:
+            self._llm_instances[model_name] = _build_chat_openai(model_name)
+        return self._llm_instances[model_name]
+
+    @property
+    def _llm(self) -> ChatOpenAI:
+        """兼容旧代码：返回主模型的 ChatOpenAI 实例"""
+        return self._get_llm(self._model_chain[0])
 
     @classmethod
     def _get_whitelist(cls) -> set[str]:
@@ -105,11 +140,15 @@ class SymptomNormalizePipeline:
             f"{[s.get('standard_name', '') for s in llm_symptoms]}"
         )
 
-        # === 第一层半：白名单过滤（清除非标准症状） ===
-        llm_symptoms = self._filter_by_whitelist(llm_symptoms)
+        # === 第一层半：白名单诊断日志（不再硬过滤，让图谱/向量层做映射） ===
+        whitelist = self._get_whitelist()
+        standard_count = sum(
+            1 for s in llm_symptoms
+            if s.get("standard_name", "") in whitelist
+        )
         logger.info(
-            f"[症状流水线] 白名单过滤后: "
-            f"{[s.get('standard_name', '') for s in llm_symptoms]}"
+            f"[症状流水线] LLM提取 {len(llm_symptoms)} 个症状，"
+            f"其中 {standard_count} 个为标准术语"
         )
 
         # === 第二层 + 第三层：对每个 LLM 提取的症状做图谱匹配 + 向量召回 ===
@@ -144,7 +183,7 @@ class SymptomNormalizePipeline:
     async def _layer1_llm_extract(self, text: str) -> list[dict]:
         """
         第一层：使用 LLM 从口语化描述中提取结构化症状。
-        通过 Function Calling 强制输出格式。
+        通过 Function Calling 强制输出格式，支持模型自动降级。
         """
         # 定义 Function Calling 工具
         tools = [{
@@ -175,28 +214,53 @@ class SymptomNormalizePipeline:
             }
         }]
         
-        # 绑定工具并调用
-        llm_with_tools = self._llm.bind_tools(tools, tool_choice={"type": "function", "function": {"name": "extract_symptoms"}})
-        response = await llm_with_tools.ainvoke([
-            {
-                "role": "system",
-                "content": (
-                    "你是一个医学症状提取专家。从用户的口语化描述中提取症状信息。\n\n"
-                    "⚠️ 严格规则（必须遵守）：\n"
-                    "1. 只提取用户明确表述为【正在经历的身体不适】的症状\n"
-                    "2. 忽略否定表达：用户说“没有X”、“不痛”、“无X”、“不X”时，"
-                    "不要提取该症状（否定≠存在）\n"
-                    "3. 忽略非症状实体：人名、药名、食物、生活场景、情绪状态不是症状\n"
-                    "4. 忽略回答性短语：“是的”、“没有”、“不清楚”、“还好”等不包含症状\n"
-                    "5. 标准医学术语：将口语转换为标准术语（如“拉肚子”→“腹泻”，"
-                    "“头疼”→“头痛”）\n"
-                    "6. 不要推测或脑补：只提取文本中明确提到的症状\n"
-                    "7. 如果文本中没有明确的症状，返回空数组\n"
-                    "8. 使用 extract_symptoms 工具输出"
-                ),
-            },
+        system_content = (
+            "你是一个医学症状提取专家。从用户的口语化描述中提取症状信息。\n\n"
+            "⚠️ 严格规则（必须遵守）：\n"
+            "1. 只提取用户明确表述为【正在经历的身体不适】的症状\n"
+            "2. 忽略否定表达：用户说'没有X'、'不痛'、'无X'、'不X'时，"
+            "不要提取该症状（否定≠存在）\n"
+            "3. 忽略非症状实体：人名、药名、食物、生活场景、情绪状态不是症状\n"
+            "4. 忽略回答性短语：'是的'、'没有'、'不清楚'、'还好'等不包含症状\n"
+            "5. 标准医学术语：将口语、方言转换为标准症状术语\n"
+            "   口语映射：拉肚子→腹泻，头疼→头痛，老想上厕所→尿频，鼻子堵了→鼻塞\n"
+            "   炎症/不适描述映射为症状而非疾病：\n"
+            "     嗓子发炎→咽痛（非咽炎），胃发炎→上腹痛（非胃炎）\n"
+            "   口语优先映射到标准症状名：\n"
+            "     胃酸→反酸，打嗝→嗳气，老想上厕所→尿频\n"
+            "   方言映射：脑壳疼→头痛，肚肚痛→腹痛，刺挠→皮肤瘙痒\n"
+            "   身体部位口语：心口窝儿疼→上腹痛，腰杆子疼→腰痛\n"
+            "6. 不要推测或脑补：只提取文本中明确提到的症状\n"
+            "7. 如果文本中没有明确的症状，返回空数组\n"
+            "8. 使用 extract_symptoms 工具输出"
+        )
+        messages = [
+            {"role": "system", "content": system_content},
             {"role": "user", "content": text},
-        ])
+        ]
+
+        # 模型降级链：主模型 → 备用模型1 → 备用模型2 → ...
+        last_error = None
+        for model_name in self._model_chain:
+            try:
+                llm = self._get_llm(model_name)
+                llm_with_tools = llm.bind_tools(
+                    tools,
+                    tool_choice={"type": "function", "function": {"name": "extract_symptoms"}}
+                )
+                response = await llm_with_tools.ainvoke(messages)
+                if model_name != self._model_chain[0]:
+                    logger.info(f"[症状流水线] LLM 已降级到备用模型: {model_name}")
+                break
+            except Exception as e:
+                if _is_rate_limit_error(e) and model_name != self._model_chain[-1]:
+                    logger.warning(f"[症状流水线] 模型 {model_name} 额度用尽，尝试下一个备用模型...")
+                    last_error = e
+                    continue
+                raise
+        else:
+            # 所有模型都失败
+            raise last_error
 
         # 解析 Function Calling 结果
         try:
@@ -458,7 +522,7 @@ def _is_valid_symptom_match(query: str, candidate: str) -> bool:
     len_ratio = min(len(query), len(candidate)) / max(len(query), len(candidate))
 
     # 长度相近 + 高重叠 → 有效；否则 → 无效
-    if len_ratio >= 0.7 and overlap_ratio >= 0.8:
+    if len_ratio >= 0.5 and overlap_ratio >= 0.8:
         return True
 
     # 特殊情况：如果候选包含 query 的所有字符（如"腹泻"是"腹泻"的子串），有效
